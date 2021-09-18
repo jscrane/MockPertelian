@@ -1,0 +1,7 @@
+.build
+*.d
+*.o
+*.swp
+boards.txt.mk
+platform.txt.mk
+programmers.txt.mk
