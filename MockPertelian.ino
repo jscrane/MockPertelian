@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <SimpleTimer.h>
 
 #define BOFF	2
 #define BON	3
@@ -9,9 +8,37 @@
 
 int bitmap[] = { 6, 7, 8, 13, 12, 11, 10, 9 };
 
-#define ON_MILLIS	90000
+#define ON_TIME 90
 
-SimpleTimer timer;
+class interval {
+
+	uint32_t start_millis;
+
+public:
+	interval() {
+		start_millis = 0;
+	}
+
+	uint32_t milliseconds() {
+		uint32_t now = millis();
+		if (now < start_millis) // handle overflow
+			return (UINT32_MAX - start_millis) + now;
+		return now - start_millis;
+	}
+
+	uint32_t seconds() {
+		return milliseconds() / 1000;
+	}
+
+	void reset() {
+		start_millis = millis();
+	}
+
+};
+
+interval timer;
+
+boolean backlight_on;
 
 void writeByte(byte b) {
 	for (int i = 0; i < 8; i++)
@@ -44,13 +71,15 @@ boolean readTouch() {
 	return read == 1023;
 }
 
-void backlightOff() {
-	digitalWrite(A0, 0);
-}
-
 void backlightOn() {
 	digitalWrite(A0, 255);
-	timer.setTimeout(ON_MILLIS, []() { backlightOff(); });
+	timer.reset();
+	backlight_on = true;
+}
+
+void backlightOff() {
+	digitalWrite(A0, 0);
+	backlight_on = false;
 }
 
 void setup() {
@@ -98,8 +127,11 @@ void loop() {
 				backlightOn();
 			else if (b < 0x20 || b >= 0x80) // only pass thru cursor cmds
 				writeCmd(b);
-		} else if (b >= 0x20 && b < 0x7f)
+		} else if (b >= 0x20)
 			writeChar(b);
+	} else if (backlight_on) {
+		if (timer.seconds() > ON_TIME)
+			backlightOff();
 	} else if (readTouch())
 		backlightOn();
 }
